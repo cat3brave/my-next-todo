@@ -1,52 +1,79 @@
-"use client"; // 👈 【重要】これを書かないとエラーになります！
+"use client";
 
 import React, { useEffect, useState } from "react";
+import { supabase } from "../utils/supabase"; // 👈 さっき作った接続ツールを読み込み
 import { InputTodo } from "./InputTodo";
 import { TodoItem } from "./TodoItem";
 
 export const TodoList = () => {
   const [inputText, setInputText] = useState("");
-  const [todos, setTodos] = useState([]); // 初期値は空にする（エラー防止）
+  const [todos, setTodos] = useState([]);
   const [filter, setFilter] = useState("all");
 
-  // 【重要】初回マウント時だけ localStorage から読み込む
+  // 1. アプリ起動時に Supabase からタスクを取得
   useEffect(() => {
-    const savedTodos = localStorage.getItem("todos_list_data");
-    if (savedTodos) {
-      setTodos(JSON.parse(savedTodos));
-    }
+    const fetchTodos = async () => {
+      const { data, error } = await supabase
+        .from("todos")
+        .select("*")
+        .order("created_at", { ascending: true });
+
+      if (error) console.log("エラー:", error);
+      else setTodos(data);
+    };
+
+    fetchTodos();
   }, []);
 
-  // todos が変わったら保存する
-  useEffect(() => {
-    // 初回読み込み前（空配列のとき）に上書き保存しないためのガード
-    if (todos.length > 0 || localStorage.getItem("todos_list_data")) {
-      localStorage.setItem("todos_list_data", JSON.stringify(todos));
-    }
-  }, [todos]);
-
-  const onClickAdd = () => {
+  // 2. タスクを追加（Supabaseに保存）
+  const onClickAdd = async () => {
     if (inputText === "") return;
-    const newTodo = {
-      id: crypto.randomUUID(),
-      text: inputText,
-      completed: false,
-    };
-    setTodos([...todos, newTodo]);
-    setInputText("");
+
+    const { data, error } = await supabase
+      .from("todos")
+      .insert([{ text: inputText, completed: false }])
+      .select();
+
+    if (error) {
+      console.log("追加エラー:", error);
+    } else {
+      // 成功したら画面にも即座に反映
+      setTodos([...todos, data[0]]);
+      setInputText("");
+    }
   };
 
-  const onClickDelete = (id) => {
-    setTodos(todos.filter((todo) => todo.id !== id));
+  // 3. タスクを削除（Supabaseから消去）
+  const onClickDelete = async (id) => {
+    const { error } = await supabase.from("todos").delete().eq("id", id);
+
+    if (error) {
+      console.log("削除エラー:", error);
+    } else {
+      setTodos(todos.filter((todo) => todo.id !== id));
+    }
   };
 
-  const onClickComplete = (id) => {
-    setTodos(
-      todos.map((todo) => {
-        if (todo.id === id) return { ...todo, completed: !todo.completed };
-        return todo;
-      }),
-    );
+  // 4. 完了状態の切り替え（Supabaseを更新）
+  const onClickComplete = async (id) => {
+    const todoToUpdate = todos.find((todo) => todo.id === id);
+    const newStatus = !todoToUpdate.completed;
+
+    const { error } = await supabase
+      .from("todos")
+      .update({ completed: newStatus })
+      .eq("id", id);
+
+    if (error) {
+      console.log("更新エラー:", error);
+    } else {
+      setTodos(
+        todos.map((todo) => {
+          if (todo.id === id) return { ...todo, completed: newStatus };
+          return todo;
+        }),
+      );
+    }
   };
 
   const filteredTodos = todos.filter((todo) => {
@@ -58,7 +85,7 @@ export const TodoList = () => {
   return (
     <div className="max-w-lg mx-auto bg-white p-6 rounded-xl shadow-xl mt-10">
       <h1 className="text-3xl font-bold text-center mb-6 text-blue-600">
-        Next.js Todo
+        Supabase Todo
       </h1>
       <InputTodo
         inputText={inputText}
