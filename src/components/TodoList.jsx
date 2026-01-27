@@ -1,17 +1,37 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { supabase } from "../utils/supabase"; // 👈 さっき作った接続ツールを読み込み
+import { supabase } from "../utils/supabase";
 import { InputTodo } from "./InputTodo";
 import { TodoItem } from "./TodoItem";
 
 export const TodoList = () => {
+  const [session, setSession] = useState(null);
   const [inputText, setInputText] = useState("");
   const [todos, setTodos] = useState([]);
   const [filter, setFilter] = useState("all");
 
-  // 1. アプリ起動時に Supabase からタスクを取得
+  // 1. ログイン状態を監視する
   useEffect(() => {
+    // 最初に「今ログインしてる？」を確認
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+    });
+
+    // ログインしたりログアウトしたりするのを監視
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  // 2. ログインしている時だけタスクを取得
+  useEffect(() => {
+    if (!session) return; // ログインしてなければ何もしない
+
     const fetchTodos = async () => {
       const { data, error } = await supabase
         .from("todos")
@@ -23,55 +43,54 @@ export const TodoList = () => {
     };
 
     fetchTodos();
-  }, []);
+  }, [session]);
 
-  // 2. タスクを追加（Supabaseに保存）
+  // 3. GitHubでログインする関数
+  const handleLogin = async () => {
+    await supabase.auth.signInWithOAuth({
+      provider: "github",
+    });
+  };
+
+  // 4. ログアウトする関数
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    setTodos([]); // 画面のタスクもクリア
+  };
+
+  // --- タスク操作系（変更なし） ---
   const onClickAdd = async () => {
     if (inputText === "") return;
-
     const { data, error } = await supabase
       .from("todos")
-      .insert([{ text: inputText, completed: false }])
+      .insert([{ text: inputText, completed: false }]) // user_idは自動で入る！
       .select();
-
-    if (error) {
-      console.log("追加エラー:", error);
-    } else {
-      // 成功したら画面にも即座に反映
+    if (error) console.log("追加エラー:", error);
+    else {
       setTodos([...todos, data[0]]);
       setInputText("");
     }
   };
 
-  // 3. タスクを削除（Supabaseから消去）
   const onClickDelete = async (id) => {
     const { error } = await supabase.from("todos").delete().eq("id", id);
-
-    if (error) {
-      console.log("削除エラー:", error);
-    } else {
-      setTodos(todos.filter((todo) => todo.id !== id));
-    }
+    if (error) console.log("削除エラー:", error);
+    else setTodos(todos.filter((todo) => todo.id !== id));
   };
 
-  // 4. 完了状態の切り替え（Supabaseを更新）
   const onClickComplete = async (id) => {
     const todoToUpdate = todos.find((todo) => todo.id === id);
     const newStatus = !todoToUpdate.completed;
-
     const { error } = await supabase
       .from("todos")
       .update({ completed: newStatus })
       .eq("id", id);
-
-    if (error) {
-      console.log("更新エラー:", error);
-    } else {
+    if (error) console.log("更新エラー:", error);
+    else {
       setTodos(
-        todos.map((todo) => {
-          if (todo.id === id) return { ...todo, completed: newStatus };
-          return todo;
-        }),
+        todos.map((todo) =>
+          todo.id === id ? { ...todo, completed: newStatus } : todo,
+        ),
       );
     }
   };
@@ -82,16 +101,45 @@ export const TodoList = () => {
     if (filter === "completed") return todo.completed;
   });
 
+  // --- 画面表示 ---
+
+  // ログインしていない場合 → 「ログインボタン」だけ表示
+  if (!session) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen bg-gray-100">
+        <div className="bg-white p-8 rounded-xl shadow-lg text-center">
+          <h1 className="text-2xl font-bold mb-4">ようこそ Todoアプリへ</h1>
+          <p className="mb-6 text-gray-600">使うにはログインしてください</p>
+          <button
+            onClick={handleLogin}
+            className="bg-black text-white px-6 py-3 rounded-lg font-bold hover:bg-gray-800 transition"
+          >
+            GitHubでログイン
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // ログインしている場合 → 「いつものアプリ」を表示
   return (
     <div className="max-w-lg mx-auto bg-white p-6 rounded-xl shadow-xl mt-10">
-      <h1 className="text-3xl font-bold text-center mb-6 text-blue-600">
-        Supabase Todo
-      </h1>
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-3xl font-bold text-blue-600">My Todo</h1>
+        <button
+          onClick={handleLogout}
+          className="text-sm text-gray-500 hover:text-red-500 underline"
+        >
+          ログアウト
+        </button>
+      </div>
+
       <InputTodo
         inputText={inputText}
         setInputText={setInputText}
         onClickAdd={onClickAdd}
       />
+
       <div className="flex justify-center space-x-2 mb-6">
         {["all", "active", "completed"].map((type) => (
           <button
@@ -107,6 +155,7 @@ export const TodoList = () => {
           </button>
         ))}
       </div>
+
       <div className="bg-gray-50 rounded-lg p-4">
         <ul>
           {filteredTodos.map((todo) => (
