@@ -1,4 +1,5 @@
 import React from "react";
+import { format } from "date-fns";
 
 export const TodoItem = (props) => {
   const { todo, onClickComplete, onClickDelete } = props;
@@ -10,6 +11,11 @@ export const TodoItem = (props) => {
           className={`text-lg ${todo.completed ? "text-gray-400 line-through" : "text-gray-800"}`}
         >
           {todo.text}
+        </span>
+
+        <span className="text-xs text-gray-400 ml-1">
+          {todo.created_at &&
+            format(new Date(todo.created_at), "yyyy/MM/dd HH:mm")}
         </span>
       </div>
 
