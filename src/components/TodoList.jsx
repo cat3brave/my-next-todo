@@ -10,6 +10,7 @@ export const TodoList = () => {
   const [inputText, setInputText] = useState("");
   const [todos, setTodos] = useState([]);
   const [filter, setFilter] = useState("all");
+  const [isLoading, setIsLoading] = useState(false);
 
   // 1. ログイン状態を監視する
   useEffect(() => {
@@ -61,6 +62,9 @@ export const TodoList = () => {
   // --- タスク操作系（変更なし） ---
   const onClickAdd = async () => {
     if (inputText === "") return;
+
+    setIsLoading(true);
+
     const { data, error } = await supabase
       .from("todos")
       .insert([{ text: inputText, completed: false }]) // user_idは自動で入る！
@@ -70,6 +74,8 @@ export const TodoList = () => {
       setTodos([...todos, data[0]]);
       setInputText("");
     }
+
+    setIsLoading(false);
   };
 
   const onClickDelete = async (id) => {
@@ -138,6 +144,7 @@ export const TodoList = () => {
         inputText={inputText}
         setInputText={setInputText}
         onClickAdd={onClickAdd}
+        disabled={isLoading}
       />
 
       <div className="flex justify-center space-x-2 mb-6">

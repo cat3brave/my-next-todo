@@ -1,21 +1,28 @@
 import React from "react";
 
 export const InputTodo = (props) => {
-  const { inputText, setInputText, onClickAdd } = props;
+  const { inputText, setInputText, onClickAdd, disabled } = props;
 
   return (
     <div className="flex space-x-2 mb-6">
       <input
+        disabled={disabled}
+        type="text"
         placeholder="買うものを入力"
         value={inputText}
         onChange={(e) => setInputText(e.target.value)}
-        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-colors"
+        className="flex-1 p-2 rounded-md border border-gray-300 outline-none focus:border-blue-500 disabled:opacity-50"
       />
       <button
+        disabled={disabled}
         onClick={onClickAdd}
-        className="px-6 py-2 bg-blue-500 text-white font-bold rounded-lg hover:bg-blue-600 transition-colors shadow-md whitespace-nowrap"
+        className={`px-6 py-2 rounded-md font-bold text-white transition ${
+          disabled
+            ? "bg-gray-400 cursor-not-allowed"
+            : "bg-blue-500 hover:bg-blue-600"
+        }`}
       >
-        追加
+        {disabled ? "送信中..." : "追加"}
       </button>
     </div>
   );
