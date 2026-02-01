@@ -101,6 +101,22 @@ export const TodoList = () => {
     }
   };
 
+  const onClickEdit = async (id, newText) => {
+    const { error } = await supabase
+      .from("todos")
+      .update({ text: newText })
+      .eq("id", id);
+
+    if (error) console.log("編集エラー:", error);
+    else {
+      setTodos(
+        todos.map((todo) =>
+          todo.id === id ? { ...todo, text: newText } : todo,
+        ),
+      );
+    }
+  };
+
   const filteredTodos = todos.filter((todo) => {
     if (filter === "all") return true;
     if (filter === "active") return !todo.completed;
@@ -171,6 +187,7 @@ export const TodoList = () => {
               todo={todo}
               onClickComplete={onClickComplete}
               onClickDelete={onClickDelete}
+              onClickEdit={onClickEdit}
             />
           ))}
         </ul>
