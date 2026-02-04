@@ -4,6 +4,8 @@ import React, { useEffect, useState } from "react";
 import { supabase } from "../utils/supabase";
 import { InputTodo } from "./InputTodo";
 import { TodoItem } from "./TodoItem";
+// ✨ 追加: トースト通知用のライブラリをインポート
+import { Toaster, toast } from "react-hot-toast";
 
 export const TodoList = () => {
   const [session, setSession] = useState(null);
@@ -12,76 +14,109 @@ export const TodoList = () => {
   const [filter, setFilter] = useState("all");
   const [isLoading, setIsLoading] = useState(false);
 
-  // 1. ログイン状態を監視する
   useEffect(() => {
-    // 最初に「今ログインしてる？」を確認
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
     });
-
-    // ログインしたりログアウトしたりするのを監視
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
     });
-
     return () => subscription.unsubscribe();
   }, []);
 
-  // 2. ログインしている時だけタスクを取得
   useEffect(() => {
-    if (!session) return; // ログインしてなければ何もしない
-
+    if (!session) return;
     const fetchTodos = async () => {
       const { data, error } = await supabase
         .from("todos")
         .select("*")
         .order("created_at", { ascending: true });
-
-      if (error) console.log("エラー:", error);
-      else setTodos(data);
+      if (error) {
+        console.log("エラー:", error);
+        toast.error("データの取得に失敗しました"); // ✨ エラー通知
+      } else {
+        setTodos(data);
+      }
     };
-
     fetchTodos();
+
+    const channel = supabase
+      .channel("todo_changes")
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "todos",
+        },
+        (payload) => {
+          if (payload.eventType === "INSERT") {
+            const newTodo = payload.new;
+            setTodos((prev) => [...prev, newTodo]);
+          } else if (payload.eventType === "DELETE") {
+            const deletedID = payload.old.id;
+            setTodos((prev) => prev.filter((todo) => todo.id !== deletedID));
+          } else if (payload.eventType === "UPDATE") {
+            const updatedTodo = payload.new;
+            setTodos((prev) =>
+              prev.map((todo) =>
+                todo.id === updatedTodo.id ? updatedTodo : todo,
+              ),
+            );
+          }
+        },
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [session]);
 
-  // 3. GitHubでログインする関数
   const handleLogin = async () => {
-    await supabase.auth.signInWithOAuth({
-      provider: "github",
-    });
+    try {
+      await supabase.auth.signInWithOAuth({ provider: "github" });
+    } catch (error) {
+      toast.error("ログインに失敗しました");
+    }
   };
 
-  // 4. ログアウトする関数
   const handleLogout = async () => {
     await supabase.auth.signOut();
-    setTodos([]); // 画面のタスクもクリア
+    setTodos([]);
+    toast.success("ログアウトしました"); // ✨ ログアウト通知
   };
 
-  // --- タスク操作系（変更なし） ---
   const onClickAdd = async () => {
-    if (inputText === "") return;
-
+    if (inputText.trim() === "") return;
     setIsLoading(true);
-
     const { data, error } = await supabase
       .from("todos")
-      .insert([{ text: inputText, completed: false }]) // user_idは自動で入る！
+      .insert([{ text: inputText, completed: false }])
       .select();
-    if (error) console.log("追加エラー:", error);
-    else {
-      setTodos([...todos, data[0]]);
-      setInputText("");
-    }
 
+    if (error) {
+      console.log("追加エラー:", error);
+      toast.error("追加に失敗しました"); // ✨ エラー通知
+    } else {
+      // setTodos([...todos, data[0]]);
+      setInputText("");
+      toast.success("タスクを追加しました！"); // ✨ 成功通知
+    }
     setIsLoading(false);
   };
 
   const onClickDelete = async (id) => {
     const { error } = await supabase.from("todos").delete().eq("id", id);
-    if (error) console.log("削除エラー:", error);
-    else setTodos(todos.filter((todo) => todo.id !== id));
+    if (error) {
+      console.log("削除エラー:", error);
+      toast.error("削除に失敗しました");
+    } else {
+      setTodos(todos.filter((todo) => todo.id !== id));
+      toast.success("タスクを削除しました"); // ✨ 成功通知
+    }
   };
 
   const onClickComplete = async (id) => {
@@ -91,13 +126,22 @@ export const TodoList = () => {
       .from("todos")
       .update({ completed: newStatus })
       .eq("id", id);
-    if (error) console.log("更新エラー:", error);
-    else {
+
+    if (error) {
+      console.log("更新エラー:", error);
+      toast.error("更新に失敗しました");
+    } else {
       setTodos(
         todos.map((todo) =>
           todo.id === id ? { ...todo, completed: newStatus } : todo,
         ),
       );
+      // ✨ 状態に合わせてメッセージを変える小技
+      if (newStatus) {
+        toast.success("タスクを完了しました！お疲れ様です 🎉");
+      } else {
+        toast.success("タスクを未完了に戻しました");
+      }
     }
   };
 
@@ -106,14 +150,16 @@ export const TodoList = () => {
       .from("todos")
       .update({ text: newText })
       .eq("id", id);
-
-    if (error) console.log("編集エラー:", error);
-    else {
+    if (error) {
+      console.log("編集エラー:", error);
+      toast.error("編集に失敗しました");
+    } else {
       setTodos(
         todos.map((todo) =>
           todo.id === id ? { ...todo, text: newText } : todo,
         ),
       );
+      toast.success("タスクを更新しました"); // ✨ 成功通知
     }
   };
 
@@ -123,12 +169,18 @@ export const TodoList = () => {
     if (filter === "completed") return todo.completed;
   });
 
-  // --- 画面表示 ---
+  const emptyMessages = {
+    all: "タスクがありません 🎉\n新しいタスクを追加してみましょう！",
+    active: "全てのタスクが完了しています！\n素晴らしいですね ✨",
+    completed:
+      "完了したタスクはまだありません。\n少しずつ進めていきましょう 💪",
+  };
 
-  // ログインしていない場合 → 「ログインボタン」だけ表示
   if (!session) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen bg-gray-100">
+        {/* ✨ 追加: これがないと通知が表示されません */}
+        <Toaster position="top-center" />
         <div className="bg-white p-8 rounded-xl shadow-lg text-center">
           <h1 className="text-2xl font-bold mb-4">ようこそ Todoアプリへ</h1>
           <p className="mb-6 text-gray-600">使うにはログインしてください</p>
@@ -143,9 +195,11 @@ export const TodoList = () => {
     );
   }
 
-  // ログインしている場合 → 「いつものアプリ」を表示
   return (
     <div className="max-w-lg mx-auto bg-white p-6 rounded-xl shadow-xl mt-10">
+      {/* ✨ 追加: ここにも配置（ログイン後の画面用） */}
+      <Toaster position="bottom-right" reverseOrder={false} />
+
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-3xl font-bold text-blue-600">My Todo</h1>
         <button
@@ -155,7 +209,6 @@ export const TodoList = () => {
           ログアウト
         </button>
       </div>
-
       <InputTodo
         inputText={inputText}
         setInputText={setInputText}
@@ -168,29 +221,33 @@ export const TodoList = () => {
           <button
             key={type}
             onClick={() => setFilter(type)}
-            className={`px-4 py-2 rounded-full transition-colors ${
-              filter === type
-                ? "bg-blue-500 text-white font-bold"
-                : "bg-gray-200 hover:bg-gray-300"
-            }`}
+            className={`px-4 py-2 rounded-full transition-colors ${filter === type ? "bg-blue-500 text-white font-bold" : "bg-gray-200 hover:bg-gray-300"}`}
           >
             {type === "all" ? "すべて" : type === "active" ? "未完了" : "完了"}
           </button>
         ))}
       </div>
 
-      <div className="bg-gray-50 rounded-lg p-4">
-        <ul>
-          {filteredTodos.map((todo) => (
-            <TodoItem
-              key={todo.id}
-              todo={todo}
-              onClickComplete={onClickComplete}
-              onClickDelete={onClickDelete}
-              onClickEdit={onClickEdit}
-            />
-          ))}
-        </ul>
+      <div className="bg-gray-50 rounded-lg p-4 min-h-[150px] flex flex-col justify-center">
+        {filteredTodos.length === 0 ? (
+          <div className="text-center text-gray-500 py-4">
+            <p className="whitespace-pre-line leading-relaxed text-sm">
+              {emptyMessages[filter]}
+            </p>
+          </div>
+        ) : (
+          <ul className="w-full">
+            {filteredTodos.map((todo) => (
+              <TodoItem
+                key={todo.id}
+                todo={todo}
+                onClickComplete={onClickComplete}
+                onClickDelete={onClickDelete}
+                onClickEdit={onClickEdit}
+              />
+            ))}
+          </ul>
+        )}
       </div>
     </div>
   );
