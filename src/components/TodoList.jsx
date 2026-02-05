@@ -6,6 +6,7 @@ import { InputTodo } from "./InputTodo";
 import { TodoItem } from "./TodoItem";
 // ✨ 追加: トースト通知用のライブラリをインポート
 import { Toaster, toast } from "react-hot-toast";
+import confetti from "canvas-confetti";
 
 export const TodoList = () => {
   const [session, setSession] = useState(null);
@@ -138,6 +139,12 @@ export const TodoList = () => {
       );
       // ✨ 状態に合わせてメッセージを変える小技
       if (newStatus) {
+        confetti({
+          particleCount: 100,
+          spread: 70,
+          origin: { y: 0.6 },
+        });
+
         toast.success("タスクを完了しました！お疲れ様です 🎉");
       } else {
         toast.success("タスクを未完了に戻しました");
