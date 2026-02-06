@@ -145,6 +145,10 @@ export const TodoList = () => {
           origin: { y: 0.6 },
         });
 
+        const audio = new Audio("/レベルアップ.mp3");
+        audio.volume = 0.5;
+        audio.play();
+
         toast.success("タスクを完了しました！お疲れ様です 🎉");
       } else {
         toast.success("タスクを未完了に戻しました");
