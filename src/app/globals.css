@@ -1,1 +1,6 @@
 @import "tailwindcss";
+
+/* 👇 この1行を追加してください！これが v4 のダークモード設定です */
+@variant dark (&:where(.dark, .dark *));
+
+/* ...以下は既存のコード（:root など）そのままでOK ... */
