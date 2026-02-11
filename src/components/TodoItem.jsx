@@ -19,7 +19,7 @@ export const TodoItem = ({
   };
 
   return (
-    <li className="flex justify-between items-center p-2 border-b border-gray-100">
+    <div className="flex justify-between items-center p-2 border-b border-gray-100">
       {/* ここから条件分岐！
          「編集中なら入力欄」を、「通常ならテキスト」を表示します
       */}
@@ -96,6 +96,6 @@ export const TodoItem = ({
           </div>
         )
       }
-    </li>
+    </div>
   );
 };

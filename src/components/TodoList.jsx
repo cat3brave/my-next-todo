@@ -6,6 +6,7 @@ import { InputTodo } from "./InputTodo";
 import { TodoItem } from "./TodoItem";
 import { Toaster, toast } from "react-hot-toast";
 import confetti from "canvas-confetti";
+import { motion, AnimatePresence } from "framer-motion";
 
 export const TodoList = () => {
   const [session, setSession] = useState(null);
@@ -272,16 +273,26 @@ export const TodoList = () => {
               </p>
             </div>
           ) : (
-            <ul className="w-full">
-              {filteredTodos.map((todo) => (
-                <TodoItem
-                  key={todo.id}
-                  todo={todo}
-                  onClickComplete={onClickComplete}
-                  onClickDelete={onClickDelete}
-                  onClickEdit={onClickEdit}
-                />
-              ))}
+            <ul className="w-full space-y-2">
+              <AnimatePresence mode="popLayout">
+                {filteredTodos.map((todo) => (
+                  <motion.li
+                    key={todo.id}
+                    layout
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, x: -100 }}
+                    transition={{ duration: 0.2 }}
+                  >
+                    <TodoItem
+                      todo={todo}
+                      onClickComplete={onClickComplete}
+                      onClickDelete={onClickDelete}
+                      onClickEdit={onClickEdit}
+                    />
+                  </motion.li>
+                ))}
+              </AnimatePresence>
             </ul>
           )}
         </div>
