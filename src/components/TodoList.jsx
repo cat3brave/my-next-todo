@@ -85,6 +85,19 @@ export const TodoList = () => {
     };
   }, [session]);
 
+  const completeCount = todos.filter((t) => t.completed).length;
+
+  const level = Math.floor(completeCount / 5) + 1;
+
+  const progress = (completeCount % 5) * 20;
+
+  const getTitle = (lv) => {
+    if (lv >= 10) return "👑 タスクの神";
+    if (lv >= 5) return "👑 タスクの神";
+    if (lv >= 3) return "✨ ベテラン";
+    return "🥚 見習い";
+  };
+
   const handleLogin = async () => {
     try {
       await supabase.auth.signInWithOAuth({ provider: "github" });
@@ -237,6 +250,28 @@ export const TodoList = () => {
           </div>
         </div>
 
+        <div className="mb-6 p-4 rounded-xl bg-gray-50 dark:bg-gray-700/50 border border-gray-100 dark:border-gray-600">
+          <div className="flex justify-between items-end mb-2">
+            <div>
+              <span className="text-sm font-bold text-blue-500 dark:text-blue-400">
+                Lv.{level}
+              </span>
+              <span className="text-lg font-bold ml-2 text-gray-700 dark:text-gray-200">
+                {getTitle(level)}
+              </span>
+            </div>
+            <div className="text-xs text-gray-400">
+              あと {5 - (completeCount % 5)} タスクでUP!
+            </div>
+          </div>
+
+          <div className="w-full bg-gray-200 dark:bg-gray-600 rounded-full h-2.5">
+            <div
+              className="bg-blue-500 h-2.5 rounded-full transition-all duration-500 ease-out"
+              style={{ width: `${progress}%` }}
+            ></div>
+          </div>
+        </div>
         {/* InputTodoの周りも色調整が必要かもですが、まずはコンテナ背景でカバー */}
         <InputTodo
           inputText={inputText}
