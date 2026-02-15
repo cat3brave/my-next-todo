@@ -162,9 +162,28 @@ export const TodoList = () => {
         const audio = new Audio("/レベルアップ.mp3"); // 音源ファイル名に合わせて調整してください
         audio.volume = 0.5;
         audio.play().catch((e) => console.log("音声再生エラー:", e));
-        toast.success("タスクを完了しました！お疲れ様です 🎉");
-      } else {
-        toast.success("タスクを未完了に戻しました");
+
+        const toastID = toast.loading("AI執事が誉め言葉を考え中...🤔");
+
+        try {
+          const res = await fetch("/api/praise", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              taskText: todoToUpdate.text,
+              levelTitle: getTitle(level),
+            }),
+          });
+          const data = await res.json();
+          toast.success(data.message, { id: toastID, duration: 6000 });
+          console.log("AIからの誉め言葉:", data.message);
+        } catch (error) {
+          console.log("誉め言葉取得エラー:", error);
+          // 👇 万が一AIが動かなかった時だけ、いつものメッセージを出すように変更！
+          toast.success("タスクを完了しました！お疲れ様です 🎉", {
+            id: toastID,
+          });
+        }
       }
     }
   };
