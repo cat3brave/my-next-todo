@@ -98,6 +98,9 @@ export const TodoList = () => {
     return "🥚 見習い";
   };
 
+  const shareText = `MY Todoアプリで[Lv.${level} ${getTitle(level)}]になりました！\n`;
+  const shareUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}&hashtags=MyTodoApp,個人開発`;
+
   const handleLogin = async () => {
     try {
       await supabase.auth.signInWithOAuth({ provider: "github" });
@@ -279,16 +282,22 @@ export const TodoList = () => {
                 {getTitle(level)}
               </span>
             </div>
-            <div className="text-xs text-gray-400">
-              あと {5 - (completeCount % 5)} タスクでUP!
-            </div>
-          </div>
 
-          <div className="w-full bg-gray-200 dark:bg-gray-600 rounded-full h-2.5">
-            <div
-              className="bg-blue-500 h-2.5 rounded-full transition-all duration-500 ease-out"
-              style={{ width: `${progress}%` }}
-            ></div>
+            {/* 右側にボタンとテキストを縦に並べる */}
+            <div className="flex flex-col items-end gap-2">
+              <div className="text-xs text-gray-400">
+                あと {5 - (completeCount % 5)} タスクでUP!
+              </div>
+              {/* ✨ 追加: Xでシェアボタン ✨ */}
+              <a
+                href={shareUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-xs bg-black text-white px-3 py-1.5 rounded-md hover:bg-gray-800 transition shadow-sm font-bold dark:border dark:border-gray-600"
+              >
+                𝕏 ポストする
+              </a>
+            </div>
           </div>
         </div>
         {/* InputTodoの周りも色調整が必要かもですが、まずはコンテナ背景でカバー */}
