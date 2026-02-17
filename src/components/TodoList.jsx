@@ -14,6 +14,7 @@ export const TodoList = () => {
   const [todos, setTodos] = useState([]);
   const [filter, setFilter] = useState("all");
   const [isLoading, setIsLoading] = useState(false);
+  const [isShaking, setIsShaking] = useState(false);
   // ✨ 追加: ダークモードの状態管理
   const [darkMode, setDarkMode] = useState(false);
 
@@ -117,6 +118,27 @@ export const TodoList = () => {
 
   const onClickAdd = async () => {
     if (inputText.trim() === "") return;
+
+    if (inputText.trim() === "ばくはつ") {
+      setInputText("");
+      setIsShaking(true);
+      setTimeout(() => setIsShaking(false), 500);
+
+      confetti({
+        particleCount: 800,
+        spread: 180,
+        startVelocity: 60,
+        origin: { y: 0.5 },
+        colors: ["#ff0000", "#ffa500", "#ffff00", "#00ff00", "#000000"],
+      });
+
+      toast("ちゅどーーーん！！！💥\n(※データは無事です)", {
+        icon: "🧨",
+        duration: 4000,
+      });
+      return;
+    }
+
     setIsLoading(true);
     const { error } = await supabase
       .from("todos")
@@ -250,7 +272,11 @@ export const TodoList = () => {
     <div className="min-h-screen py-10 bg-gray-100 dark:bg-gray-900 transition-colors duration-300">
       <Toaster position="bottom-right" reverseOrder={false} />
 
-      <div className="max-w-lg mx-auto bg-white dark:bg-gray-800 p-6 rounded-xl shadow-xl transition-colors duration-300">
+      <motion.div
+        animate={isShaking ? { x: [-20, 20, -20, 20, -10, 10, -5, 5, 0] } : {}}
+        transition={{ duration: 0.5 }}
+        className="max-w-lg mx-auto bg-white dark:bg-gray-800 p-6 rounded-xl shadow-xl transition-colors duration-300"
+      >
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-3xl font-bold text-blue-600 dark:text-blue-400">
             My Todo
@@ -359,7 +385,7 @@ export const TodoList = () => {
             </ul>
           )}
         </div>
-      </div>
+      </motion.div>
     </div>
   );
 };
